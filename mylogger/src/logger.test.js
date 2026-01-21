@@ -1,8 +1,7 @@
 const { describe, it, beforeEach, mock } = require('node:test');
 const assert = require('node:assert');
 const { init, logger, _reset } = require('./logger');
-const ApiKeyIsMissingError = require('./errors/apiKeyIsMissingError');
-const NotInitializedError = require('./errors/notInitializedError');
+const { ApiKeyIsMissingError, NotInitializedError } = require('./errors');
 const { PRODUCTION } = require('./constants');
 
 describe('logger', () => {
