@@ -1,6 +1,9 @@
 const { describe, it, beforeEach, mock } = require('node:test');
 const assert = require('node:assert');
 const { init, logger, _reset } = require('./logger');
+const ApiKeyIsMissingError = require('./errors/apiKeyIsMissingError');
+const NotInitializedError = require('./errors/notInitializedError');
+const { PRODUCTION } = require('./constants');
 
 describe('logger', () => {
   beforeEach(() => {
@@ -10,7 +13,6 @@ describe('logger', () => {
   describe('init()', () => {
     it('Init without parameters', () => {
       init();
-      // Should not throw when calling logger methods after init
       assert.doesNotThrow(() => logger.log('test'));
     });
 
@@ -24,13 +26,6 @@ describe('logger', () => {
       assert.strictEqual(output.service, 'my-service');
 
       consoleMock.mock.restore();
-    });
-
-    it('Log in production without apiKey', () => {
-      assert.throws(
-        () => init({ env: 'production' }),
-        { message: 'mylogger: apiKey is required in production' }
-      );
     });
 
     it('Init can only be called once', () => {
@@ -107,7 +102,7 @@ describe('logger', () => {
       consoleMock.mock.restore();
     });
 
-    it('single argument formats correctly (not wrapped in array)', () => {
+    it('Single argument formats correctly (not wrapped in array)', () => {
       const consoleMock = mock.method(console, 'log', () => {});
 
       init();
@@ -121,7 +116,7 @@ describe('logger', () => {
       consoleMock.mock.restore();
     });
 
-    it('multiple arguments format as array', () => {
+    it('Multiple arguments format as array', () => {
       const consoleMock = mock.method(console, 'log', () => {});
 
       init();
@@ -136,19 +131,19 @@ describe('logger', () => {
     });
   });
 
-  describe('error handling', () => {
-    it('throws error when calling logger methods before init()', () => {
+  describe('Error handling', () => {
+    it('Throws error when calling logger in production without apiKey', () => {
       assert.throws(
-        () => logger.log('test'),
-        { message: 'Logger not initialized. Call init() first.' }
+        () => init({ env: PRODUCTION }),
+        ApiKeyIsMissingError
       );
     });
 
-    it('throws error for all logger methods before init()', () => {
-      assert.throws(() => logger.log('test'), Error);
-      assert.throws(() => logger.info('test'), Error);
-      assert.throws(() => logger.warn('test'), Error);
-      assert.throws(() => logger.error('test'), Error);
+    it('Throws error for all logger methods before init()', () => {
+      assert.throws(() => logger.log('test'), NotInitializedError);
+      assert.throws(() => logger.info('test'), NotInitializedError);
+      assert.throws(() => logger.warn('test'), NotInitializedError);
+      assert.throws(() => logger.error('test'), NotInitializedError);
     });
   });
 });
