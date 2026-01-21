@@ -1,6 +1,5 @@
 const { DEVELOPMENT, PRODUCTION, SERVICE_NAME, LOG_LEVELS } = require('./constants');
-const ApiKeyIsMissingError = require('./errors/apiKeyIsMissingError');
-const NotInitializedError = require('./errors/notInitializedError');
+const { ApiKeyIsMissingError, NotInitializedError } = require('./errors');
 const ServiceLogger = require('./ServiceLogger');
 
 let initialized = false;
@@ -15,6 +14,15 @@ function getDefaultConfigObject() {
   }
 }
 
+/**
+ * Initialize the logger with configuration options.
+ * Can only be called once - subsequent calls are ignored.
+ * @param {Object} options - Configuration options
+ * @param {string} [options.env=DEVELOPMENT] - Environment mode ('development' or 'production')
+ * @param {string} [options.apiKey] - API key for production logging service (required in production)
+ * @param {string} [options.serviceName=SERVICE_NAME] - Service identifier included in log output
+ * @throws {ApiKeyIsMissingError} When env is 'production' and apiKey is not provided
+ */
 function init(options = {}) {
   if (initialized) return;
 
@@ -35,6 +43,13 @@ function init(options = {}) {
   initialized = true;
 }
 
+/**
+ * Internal function to format and output log messages.
+ * @param {string} level - Log level (log, info, warn, error)
+ * @param {...*} args - Arguments to log
+ * @throws {NotInitializedError} When logger has not been initialized
+ * @private
+ */
 function output(level, ...args) {
   if (!initialized) {
     throw new NotInitializedError();
@@ -59,6 +74,14 @@ function output(level, ...args) {
 
 }
 
+/**
+ * Logger object with methods for different log levels.
+ * @type {Object}
+ * @property {function(...*): void} log - Log a standard message
+ * @property {function(...*): void} info - Log an informational message
+ * @property {function(...*): void} warn - Log a warning message
+ * @property {function(...*): void} error - Log an error message
+ */
 const logger = {
   log: (...args) => output(LOG_LEVELS.LOG, ...args),
   info: (...args) => output(LOG_LEVELS.INFO, ...args),
