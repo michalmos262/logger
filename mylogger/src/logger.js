@@ -1,6 +1,6 @@
 const { DEVELOPMENT, PRODUCTION, SERVICE_NAME, LOG_LEVELS } = require('./constants');
 const { ApiKeyIsMissingError, NotInitializedError } = require('./errors');
-const ServiceLogger = require('./ServiceLogger');
+const ServiceLogger = require('./services/service-logger');
 
 let initialized = false;
 let config = getDefaultConfigObject();
