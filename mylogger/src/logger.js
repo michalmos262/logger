@@ -1,8 +1,7 @@
+const { DEVELOPMENT, PRODUCTION, SERVICE_NAME, LOG_LEVELS } = require('./constants');
+const ApiKeyIsMissingError = require('./errors/apiKeyIsMissingError');
+const NotInitializedError = require('./errors/notInitializedError');
 const ServiceLogger = require('./ServiceLogger');
-
-const DEVELOPMENT = 'development'
-const PRODUCTION = 'production'
-const SERVICE_NAME = 'unknown'
 
 let initialized = false;
 let config = getDefaultConfigObject();
@@ -23,7 +22,7 @@ function init(options = {}) {
 
   if (config.env === PRODUCTION) {
     if (!config.apiKey) {
-      throw new Error('mylogger: apiKey is required in production');
+      throw new ApiKeyIsMissingError();
     }
 
     ServiceLogger.init(config.apiKey);
@@ -38,7 +37,7 @@ function init(options = {}) {
 
 function output(level, ...args) {
   if (!initialized) {
-    throw new Error('Logger not initialized. Call init() first.');
+    throw new NotInitializedError();
   }
 
   const payload = {
@@ -50,19 +49,21 @@ function output(level, ...args) {
 
   const message = JSON.stringify(payload);
 
-  // Call the appropriate method on the transport
-  if (typeof logsTarget[level] === 'function') {
-    logsTarget[level](message);
-  } else {
-    logsTarget.log(message);
-  }
+  // Call the appropriate method on the logs target
+  const logMethod =
+    typeof logsTarget[level] === 'function'
+      ? logsTarget[level]
+      : logsTarget.log;
+
+  logMethod(message);
+
 }
 
 const logger = {
-  log: (...args) => output('log', ...args),
-  info: (...args) => output('info', ...args),
-  warn: (...args) => output('warn', ...args),
-  error: (...args) => output('error', ...args)
+  log: (...args) => output(LOG_LEVELS.LOG, ...args),
+  info: (...args) => output(LOG_LEVELS.INFO, ...args),
+  warn: (...args) => output(LOG_LEVELS.WARN, ...args),
+  error: (...args) => output(LOG_LEVELS.ERROR, ...args)
 };
 
 // Internal function for testing - resets module state
