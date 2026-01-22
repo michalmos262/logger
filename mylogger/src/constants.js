@@ -1,6 +1,5 @@
 const DEVELOPMENT = 'development';
 const PRODUCTION = 'production';
-const SERVICE_NAME = 'unknown';
 
 const LOG_LEVELS = {
   LOG: 'log',
@@ -9,4 +8,4 @@ const LOG_LEVELS = {
   ERROR: 'error'
 };
 
-module.exports = { DEVELOPMENT, PRODUCTION, SERVICE_NAME, LOG_LEVELS };
+module.exports = { DEVELOPMENT, PRODUCTION, LOG_LEVELS };

@@ -1,12 +1,21 @@
 const { describe, it, beforeEach, mock } = require('node:test');
 const assert = require('node:assert');
-const { init, logger, _reset } = require('./logger');
-const { ApiKeyIsMissingError, NotInitializedError } = require('./errors');
+const { ApiKeyIsMissingError, NotInitializedError, InvalidEnvError } = require('./errors');
 const { PRODUCTION } = require('./constants');
 
 describe('logger', () => {
+  let init, logger, ServiceLogger;
+
   beforeEach(() => {
-    _reset();
+    // Reset module cache to get a fresh logger instance between tests.
+    // The logger is a singleton with internal state (e.g. `initialized`),
+    // so reloading avoids cross-test interference.
+    delete require.cache[require.resolve('./logger')];
+    delete require.cache[require.resolve('./ServiceLogger')];
+
+    // Re-require with fresh state
+    ({ init, logger } = require('./logger'));
+    ServiceLogger = require('./ServiceLogger');
   });
 
   describe('init()', () => {
@@ -15,126 +24,125 @@ describe('logger', () => {
       assert.doesNotThrow(() => logger.log('test'));
     });
 
-    it('Init with custom service name', () => {
+    it('Init can only be called once', () => {
       const consoleMock = mock.method(console, 'log', () => {});
 
-      init({ serviceName: 'my-service' });
-      logger.log('test');
+      init();
+      logger.log('first');
 
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
-      assert.strictEqual(output.service, 'my-service');
+      init(); // Should be ignored
+      logger.log('second');
+
+      assert.strictEqual(consoleMock.mock.calls.length, 2);
+      assert.strictEqual(consoleMock.mock.calls[0].arguments[0], 'first');
+      assert.strictEqual(consoleMock.mock.calls[1].arguments[0], 'second');
 
       consoleMock.mock.restore();
     });
 
-    it('Init can only be called once', () => {
-      const consoleMock = mock.method(console, 'log', () => {});
+    it('Init with production env and valid apiKey uses ServiceLogger', () => {
+      const serviceLoggerMock = mock.method(ServiceLogger, 'log', () => {});
 
-      init({ serviceName: 'first' });
-      init({ serviceName: 'second' }); // Should be ignored
+      init({ env: PRODUCTION, apiKey: 'test-api-key' });
+      logger.log('production message');
 
-      logger.log('test');
+      assert.strictEqual(serviceLoggerMock.mock.calls.length, 1);
+      assert.strictEqual(serviceLoggerMock.mock.calls[0].arguments[0], 'production message');
 
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
-      assert.strictEqual(output.service, 'first');
-
-      consoleMock.mock.restore();
+      serviceLoggerMock.mock.restore();
     });
   });
 
   describe('logging methods', () => {
-    it('logger.log()', () => {
-      const consoleMock = mock.method(console, 'log', () => {});
-
-      init({ serviceName: 'test-service' });
-      logger.log('hello');
-
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
-
-      assert.ok(output.timestamp);
-      assert.strictEqual(output.level, 'log');
-      assert.strictEqual(output.service, 'test-service');
-      assert.strictEqual(output.message, 'hello');
-
-      consoleMock.mock.restore();
-    });
-
-    it('logger.info()', () => {
-      const consoleMock = mock.method(console, 'info', () => {});
-
-      init({ serviceName: 'test-service' });
-      logger.info('info message');
-
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
-
-      assert.strictEqual(output.level, 'info');
-      assert.strictEqual(output.message, 'info message');
-
-      consoleMock.mock.restore();
-    });
-
-    it('logger.warn()', () => {
-      const consoleMock = mock.method(console, 'warn', () => {});
-
-      init({ serviceName: 'test-service' });
-      logger.warn('warning message');
-
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
-
-      assert.strictEqual(output.level, 'warn');
-      assert.strictEqual(output.message, 'warning message');
-
-      consoleMock.mock.restore();
-    });
-
-    it('logger.error()', () => {
-      const consoleMock = mock.method(console, 'error', () => {});
-
-      init({ serviceName: 'test-service' });
-      logger.error('error message');
-
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
-
-      assert.strictEqual(output.level, 'error');
-      assert.strictEqual(output.message, 'error message');
-
-      consoleMock.mock.restore();
-    });
-
-    it('Single argument formats correctly (not wrapped in array)', () => {
+    it('logger.log() passes arguments to console.log', () => {
       const consoleMock = mock.method(console, 'log', () => {});
 
       init();
-      logger.log('single arg');
+      logger.log('hello');
 
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
-
-      assert.strictEqual(output.message, 'single arg');
-      assert.strictEqual(typeof output.message, 'string');
+      assert.strictEqual(consoleMock.mock.calls.length, 1);
+      assert.strictEqual(consoleMock.mock.calls[0].arguments[0], 'hello');
 
       consoleMock.mock.restore();
     });
 
-    it('Multiple arguments format as array', () => {
+    it('logger.info() passes arguments to console.info', () => {
+      const consoleMock = mock.method(console, 'info', () => {});
+
+      init();
+      logger.info('info message');
+
+      assert.strictEqual(consoleMock.mock.calls.length, 1);
+      assert.strictEqual(consoleMock.mock.calls[0].arguments[0], 'info message');
+
+      consoleMock.mock.restore();
+    });
+
+    it('logger.warn() passes arguments to console.warn', () => {
+      const consoleMock = mock.method(console, 'warn', () => {});
+
+      init();
+      logger.warn('warning message');
+
+      assert.strictEqual(consoleMock.mock.calls.length, 1);
+      assert.strictEqual(consoleMock.mock.calls[0].arguments[0], 'warning message');
+
+      consoleMock.mock.restore();
+    });
+
+    it('logger.error() passes arguments to console.error', () => {
+      const consoleMock = mock.method(console, 'error', () => {});
+
+      init();
+      logger.error('error message');
+
+      assert.strictEqual(consoleMock.mock.calls.length, 1);
+      assert.strictEqual(consoleMock.mock.calls[0].arguments[0], 'error message');
+
+      consoleMock.mock.restore();
+    });
+
+    it('Multiple arguments are passed through', () => {
       const consoleMock = mock.method(console, 'log', () => {});
 
       init();
       logger.log('hello', 'world', 123);
 
-      const output = JSON.parse(consoleMock.mock.calls[0].arguments[0]);
+      assert.strictEqual(consoleMock.mock.calls.length, 1);
+      assert.deepStrictEqual(
+        consoleMock.mock.calls[0].arguments,
+        ['hello', 'world', 123]
+      );
 
-      assert.ok(Array.isArray(output.message));
-      assert.deepStrictEqual(output.message, ['hello', 'world', 123]);
+      consoleMock.mock.restore();
+    });
+
+    it('Object arguments are passed through', () => {
+      const consoleMock = mock.method(console, 'log', () => {});
+
+      init();
+      logger.log('test', { a: 1, b: 2 });
+
+      assert.strictEqual(consoleMock.mock.calls.length, 1);
+      assert.strictEqual(consoleMock.mock.calls[0].arguments[0], 'test');
+      assert.deepStrictEqual(consoleMock.mock.calls[0].arguments[1], { a: 1, b: 2 });
 
       consoleMock.mock.restore();
     });
   });
 
   describe('Error handling', () => {
-    it('Throws error when calling logger in production without apiKey', () => {
+    it('Throws error when calling init in production without apiKey', () => {
       assert.throws(
         () => init({ env: PRODUCTION }),
         ApiKeyIsMissingError
+      );
+    });
+
+    it('Throws error for invalid env value', () => {
+      assert.throws(
+        () => init({ env: 'invalid' }),
+        InvalidEnvError
       );
     });
 
