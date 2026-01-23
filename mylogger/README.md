@@ -64,4 +64,4 @@ npm test
 - **Singleton pattern**: `init()` can only be called once to prevent configuration changes at runtime
 - **Dual-mode logging**: Development mode logs to console; production mode sends to a 3rd-party service
 - **Drop-in replacement**: Behaves like standard console methods for easy adoption
-- **Custom errors**: Descriptive error classes for better debugging (`ApiKeyIsMissingError`, `NotInitializedError`)
+- **Custom errors**: Descriptive error classes for better debugging (`ApiKeyIsMissingError`, `NotInitializedError`, `InvalidEnvError`)

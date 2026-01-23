@@ -10,7 +10,7 @@ function getDefaultConfigObject() {
   return {
     env: DEVELOPMENT,
     apiKey: null
-  }
+  };
 }
 
 /**
@@ -37,8 +37,7 @@ function init(options = {}) {
 
     ServiceLogger.init(config.apiKey);
     logsTarget = ServiceLogger;
-  }
-  else {
+  } else {
     logsTarget = console;
   }
 
@@ -77,13 +76,6 @@ const logger = {
   warn: (...args) => output(LOG_LEVELS.WARN, ...args),
   error: (...args) => output(LOG_LEVELS.ERROR, ...args)
 };
-
-// Internal function for testing - resets module state
-function _reset() {
-  initialized = false;
-  config = getDefaultConfigObject();
-  logsTarget = console;
-}
 
 module.exports = {
   init,
