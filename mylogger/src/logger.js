@@ -7,6 +7,8 @@ let config = getDefaultConfigObject();
 let logsTarget = console;
 
 function getDefaultConfigObject() {
+  // Assumption: Default to development mode for safety.
+  // This ensures logs go to console (not lost) if env is not specified.
   return {
     env: DEVELOPMENT,
     apiKey: null
@@ -22,6 +24,9 @@ function getDefaultConfigObject() {
  * @throws {ApiKeyIsMissingError} When env is 'production' and apiKey is not provided
  */
 function init(options = {}) {
+  // Assumption: Subsequent init() calls are silently ignored.
+  // Alternative: Could throw or warn. Chose silent ignore to avoid
+  // breaking apps that accidentally call init() multiple times.
   if (initialized) return;
 
   config = { ...config, ...options };
@@ -53,10 +58,15 @@ function init(options = {}) {
  * @private
  */
 function output(level, ...args) {
+  // Assumption: Logging before init() throws an error.
+  // Alternative: Could auto-initialize with defaults. Chose explicit
+  // initialization to ensure intentional configuration in production.
   if (!initialized) {
     throw new NotInitializedError();
   }
 
+  // Fallback to .log if the specific method doesn't exist on the target.
+  // This provides resilience if ServiceLogger doesn't implement all methods.
   const logMethod = logsTarget[level] ?? logsTarget.log;
   logMethod.apply(logsTarget, args);
 }
